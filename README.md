@@ -1,6 +1,6 @@
 # Bank Account Managemen Microservice
 
-This document outlines the comprehensive testing strategy for the Banking Application built with Java, Quarkus, Apache Camel, and PostgreSQL. The application provides core banking functionalities including account management, transactions, and fund transfers.
+A comprehensive banking microservice built with Quarkus Camel (XML-DSL) that provides core banking operations including account management, transactions, and fund transfers using PostgreSQL as the database.
 ## Running the application in dev mode
 
 You can run your application in dev mode that enables live coding using:
@@ -26,14 +26,70 @@ You can run your application in dev mode that enables live coding using:
 ### Software Requirements:
 
 * Java 17 or higher
-
+* Apache Camel 4.11.0 (XML-DSL)
 * PostgreSQL 13+
-
 * Apache Maven 3.8+
-
 * JMeter 5.5+
-
 * Docker (optional, for containerized testing)
+## Project Structure
+```
+src/main/java/org/keen/bank/
+├── dto/                          # Data Transfer Objects
+│   ├── AccountRequest.java
+│   ├── AccountResponse.java
+│   ├── TransferRequest.java
+│   └── TransactionResponse.java
+├── service/                      # Business Logic Services
+│   ├── AccountService.java
+│   └── ValidationService.java
+├── resource/                     # REST Endpoints
+│   └── AccountResource.java
+
+src/main/resources/
+├── application.properties        # Application configuration
+├── import.sql                   # Database schema & sample data
+└── camel/                       # Camel XML Routes
+    ├── account-routes.xml
+    ├── transaction-routes.xml
+    ├── validation-routes.xml
+    └── transaction-recording-routes.xml
+```
+## Core Functionalities
+### Account Management
+* Account Creation: Create new bank accounts with validation
+* Account Update: Modify account details dynamically
+* Account Retrieval: Get account information and balance
+### Transaction Operations
+* Cash Deposit: Add funds to accounts
+* Cash Withdrawal: Remove funds with balance validation
+* Fund Transfer: Transfer between accounts with full validation
+### Validation & Security
+* Input validation for all operations
+* Sufficient funds verification
+* Account status checks
+* Duplicate account prevention
+
+## API Endpoints
+### Account Management
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| POST | `/api/accounts/create` | Create new account |
+| PUT | `/api/accounts/{accountNumber}` | Update account details |
+| GET | `/api/accounts/{accountNumber}` | Get account information |
+
+### Transaction Operations
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| POST | `/api/accounts/{accountNumber}/deposit` | Deposit funds |
+| POST | `/api/accounts/{accountNumber}/withdraw` | Withdraw funds |
+| POST | `/api/accounts/transfer` | Transfer between accounts |
+
+## Camel XML Routes Architecture
+### Route Files Structure
+* account-routes.xml - Account CRUD operations
+* transaction-routes.xml - Financial transactions
+* validation-routes.xml - Input validation logic
+* transaction-recording-routes.xml - Audit logging
 
 ## Test Structure
 ```
