@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<camel xmlns="http://camel.apache.org/schema/spring"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+          http://camel.apache.org/schema/spring
+          https://raw.githubusercontent.com/apache/camel/main/core/camel-spring-xml/src/main/resources/org/apache/camel/schema/spring/camel-spring.xsd">
+
+    <route id="create-account-route">
+        <from uri="direct:createAccount"/>
+
+        <!-- Log raw body -->
+        <log message="BODY → ${body}"/>
+        <log message="ACC NUM → ${body.getAccountNumber()}"/>
+        <!-- Detailed logging -->
+        <log message="=== RAW REQUEST ==="/>
+        <log message="Body class: ${body.class.name}"/>
+        <log message="Body toString: ${body}"/>
+        <log message="Body as JSON: ${bodyAs(com.fasterxml.jackson.databind.ObjectMapper)}"/>
+        <!-- Validate account creation using validation route -->
+        <to uri="direct:validateAccountCreation"/>
+        <!-- Extract fields into headers FIRST (while body is still the DTO object) -->
+        <setHeader name="accountNumber"><simple>${body.getAccountNumber()}</simple></setHeader>
+        <setHeader name="customerName"><simple>${body.getCustomerName()}</simple></setHeader>
+        <setHeader name="email"><simple>${body.getEmail()}</simple></setHeader>
+        <setHeader name="phone"><simple>${body.getPhone()}</simple></setHeader>
+        <setHeader name="accountType"><simple>${body.getAccountType()}</simple></setHeader>
+        <setHeader name="initialBalance"><simple>${body.getInitialBalance()}</simple></setHeader>
+
+        <!-- Convert DTO to Map (optional, if needed for other purposes) -->
+        <setBody>
+            <simple>${bodyAs(java.util.Map)}</simple>
+        </setBody>
+
+        <!-- Validate account creation using validation route -->
+        <!-- Uncomment when ready -->
+        <!-- <to uri="direct:validateAccountCreation"/> -->
+
+        <!-- Check if account already exists -->
+        <!-- FIX: Remove outputType=SelectOne or change how we access the result -->
+        <to uri="sql:SELECT COUNT(*) as count FROM accounts WHERE account_number = :#accountNumber?outputType=SelectOne"/>
+
+        <!-- DEBUG: Log what the SQL query returned -->
+        <log message="SQL COUNT RESULT → ${body} (Type: ${body.class.name})"/>
+
+        <choice>
+            <when>
+                <!-- FIX: Access the Long value directly, not as Map property -->
+                <simple>${body} > 0</simple>
+                <setBody>
+                    <constant>{"success": false, "message": "Account already exists"}</constant>
+                </setBody>
+                <setHeader name="CamelHttpResponseCode"><constant>409</constant></setHeader>
+                <stop/>
+            </when>
+        </choice>
+
+        <!-- Insert new account -->
+        <to uri="sql:INSERT INTO accounts (
+               account_number, customer_name, email, phone, account_type, balance, status
+           ) VALUES (
+               :#accountNumber, :#customerName, :#email, :#phone, :#accountType, :#initialBalance, 'ACTIVE'
+           )?useMessageBodyForSql=false"/>
+
+        <setBody>
+            <constant>{"success": true, "message": "Account created successfully"}</constant>
+        </setBody>
+        <!-- Error handling -->
+        <onException>
+            <exception>java.lang.Exception</exception>
+            <handled>
+                <constant>true</constant>
+            </handled>
+            <setBody>
+                <simple>{"success": false, "message": "${exception.message}"}</simple>
+            </setBody>
+            <setHeader name="CamelHttpResponseCode">
+                <constant>400</constant>
+            </setHeader>
+        </onException>
+    </route>
+
+<!--    update account-->
+    <route id="update-account-route">
+        <from uri="direct:updateAccount"/>
+        <to uri="direct:validateAccountExists"/>
+
+        <!-- Build dynamic UPDATE query -->
+        <setBody>
+            <simple>
+                UPDATE accounts SET
+                ${body.containsKey('customerName') ? "customer_name = :#customerName," : ""}
+                ${body.containsKey('email') ? "email = :#email," : ""}
+                ${body.containsKey('phone') ? "phone = :#phone," : ""}
+                ${body.containsKey('accountType') ? "account_type = :#accountType," : ""}
+                ${body.containsKey('status') ? "status = :#status," : ""}
+                updated_at = CURRENT_TIMESTAMP
+                WHERE account_number = :#accountNumber
+            </simple>
+        </setBody>
+
+        <setHeader name="accountNumber"><simple>${header.accountNumber}</simple></setHeader>
+        <to uri="sql:${body}?useMessageBodyForSql=true"/>
+        <setBody>
+            <constant>{"success": true, "message": "Account updated successfully"}</constant>
+        </setBody>
+    </route>
+</camel>

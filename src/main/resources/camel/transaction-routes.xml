@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<camel xmlns="http://camel.apache.org/schema/spring"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+          http://camel.apache.org/schema/spring
+          https://raw.githubusercontent.com/apache/camel/main/core/camel-spring-xml/src/main/resources/org/apache/camel/schema/spring/camel-spring.xsd">
+
+    <!-- DEPOSIT -->
+    <route id="deposit-route">
+        <from uri="direct:deposit"/>
+
+        <!-- Log incoming values -->
+        <log message="Deposit - Account: ${header.accountNumber}, Amount: ${body}"/>
+        <log message="Body type: ${body.class.name}"/>
+
+        <!-- Store amount in header -->
+        <setHeader name="amount"><simple>${body}</simple></setHeader>
+
+<!--         Add validations -->
+        <to uri="direct:validateAccountExists"/>
+        <to uri="direct:validateActiveAccount"/>
+
+        <!-- Manual amount validation using header -->
+        <choice>
+            <when>
+                <simple>${header.amount} == null || ${header.amount} &lt;= 0</simple>
+                <setBody><constant>{"success": false, "message": "Amount must be positive"}</constant></setBody>
+                <setHeader name="CamelHttpResponseCode"><constant>400</constant></setHeader>
+                <stop/>
+            </when>
+        </choice>
+
+        <!-- Create parameter map using the SAME syntax as create account route -->
+        <setBody>
+            <simple>{'amount': ${header.amount}, 'accountNumber': '${header.accountNumber}'}</simple>
+        </setBody>
+
+        <log message="SQL Parameters: ${body}"/>
+
+        <!-- Update account balance -->
+        <to uri="sql:UPDATE accounts SET balance = balance + :#amount WHERE account_number = :#accountNumber"/>
+
+        <!-- Record transaction -->
+        <setHeader name="operationType"><constant>DEPOSIT</constant></setHeader>
+<!--        <to uri="direct:recordTransaction"/>-->
+
+        <setBody><constant>{"success": true, "message": "Deposit completed successfully"}</constant></setBody>
+        <!-- Error handling -->
+        <onException>
+            <exception>java.lang.Exception</exception>
+            <handled>
+                <constant>true</constant>
+            </handled>
+            <log message="Deposit error: ${exception.message}"/>
+            <setBody>
+                <simple>{"success": false, "message": "Deposit failed: ${exception.message}"}</simple>
+            </setBody>
+            <setHeader name="CamelHttpResponseCode">
+                <constant>400</constant>
+            </setHeader>
+        </onException>
+    </route>
+
+    <!-- WITHDRAW -->
+    <route id="withdraw-route">
+        <from uri="direct:withdraw"/>
+
+        <!-- Log incoming values -->
+        <log message="Withdraw - Account: ${header.accountNumber}, Amount: ${body}"/>
+
+        <!-- Store amount in header -->
+        <setHeader name="amount"><simple>${body}</simple></setHeader>
+
+        <!-- Add validations -->
+        <to uri="direct:validateAccountExists"/>
+        <to uri="direct:validateActiveAccount"/>
+
+        <!-- Manual amount validation -->
+        <choice>
+            <when>
+                <simple>${header.amount} == null || ${header.amount} &lt;= 0</simple>
+                <setBody><constant>{"success": false, "message": "Amount must be positive"}</constant></setBody>
+                <setHeader name="CamelHttpResponseCode"><constant>400</constant></setHeader>
+                <stop/>
+            </when>
+        </choice>
+
+        <!-- Validate sufficient funds -->
+        <to uri="direct:validateSufficientFunds"/>
+
+        <!-- Create parameter map -->
+        <setBody>
+            <simple>{'amount': ${header.amount}, 'accountNumber': '${header.accountNumber}'}</simple>
+        </setBody>
+
+        <log message="SQL Parameters: ${body}"/>
+
+        <!-- Update account balance -->
+        <to uri="sql:UPDATE accounts SET balance = balance - :#amount WHERE account_number = :#accountNumber"/>
+
+        <!-- Record transaction -->
+        <setHeader name="operationType"><constant>WITHDRAWAL</constant></setHeader>
+<!--        <to uri="direct:recordTransaction"/>-->
+
+        <setBody><constant>{"success": true, "message": "Withdrawal completed successfully"}</constant></setBody>
+
+        <!-- Error handling -->
+        <onException>
+            <exception>java.lang.Exception</exception>
+            <handled>
+                <constant>true</constant>
+            </handled>
+            <log message="Withdrawal error: ${exception.message}"/>
+            <setBody>
+                <simple>{"success": false, "message": "Withdrawal failed: ${exception.message}"}</simple>
+            </setBody>
+            <setHeader name="CamelHttpResponseCode">
+                <constant>400</constant>
+            </setHeader>
+        </onException>
+    </route>
+
+    <!-- TRANSFER -->
+<!--    <route id="transfer-route">-->
+<!--        <from uri="direct:transfer"/>-->
+
+<!--        &lt;!&ndash; Log incoming values &ndash;&gt;-->
+<!--        <log message="Transfer - From: ${body.fromAccount}, To: ${body.toAccount}, Amount: ${body.amount}"/>-->
+
+<!--        &lt;!&ndash; Store values in headers (same as working routes) &ndash;&gt;-->
+<!--        <setHeader name="fromAccount"><simple>${body.fromAccount}</simple></setHeader>-->
+<!--        <setHeader name="toAccount"><simple>${body.toAccount}</simple></setHeader>-->
+<!--        <setHeader name="amount"><simple>${body.amount}</simple></setHeader>-->
+<!--        <setHeader name="description"><simple>${body.description}</simple></setHeader>-->
+
+<!--        &lt;!&ndash; Validate transfer request &ndash;&gt;-->
+<!--        <to uri="direct:validateTransferRequest"/>-->
+
+<!--        &lt;!&ndash; Validate FROM account &ndash;&gt;-->
+<!--        <setHeader name="accountNumber"><simple>${header.fromAccount}</simple></setHeader>-->
+<!--        <to uri="direct:validateAccountExists"/>-->
+<!--        <to uri="direct:validateActiveAccount"/>-->
+
+<!--        &lt;!&ndash; Validate TO account &ndash;&gt;-->
+<!--        <setHeader name="accountNumber"><simple>${header.toAccount}</simple></setHeader>-->
+<!--        <to uri="direct:validateAccountExists"/>-->
+<!--        <to uri="direct:validateActiveAccount"/>-->
+
+<!--        &lt;!&ndash; Validate sufficient funds &ndash;&gt;-->
+<!--        <setHeader name="accountNumber"><simple>${header.fromAccount}</simple></setHeader>-->
+<!--        <to uri="direct:validateSufficientFunds"/>-->
+
+<!--        &lt;!&ndash; UPDATE FROM ACCOUNT - Use same pattern as deposit/withdraw &ndash;&gt;-->
+<!--        <setBody>-->
+<!--            <simple>{'amount': ${header.amount}, 'accountNumber': '${header.fromAccount}'}</simple>-->
+<!--        </setBody>-->
+<!--        <log message="Updating FROM account with: ${body}"/>-->
+<!--        <to uri="sql:UPDATE accounts SET balance = balance - :#amount WHERE account_number = :#accountNumber"/>-->
+
+<!--        &lt;!&ndash; UPDATE TO ACCOUNT - Use same pattern as deposit/withdraw &ndash;&gt;-->
+<!--        <setBody>-->
+<!--            <simple>{'amount': ${header.amount}, 'accountNumber': '${header.toAccount}'}</simple>-->
+<!--        </setBody>-->
+<!--        <log message="Updating TO account with: ${body}"/>-->
+<!--        <to uri="sql:UPDATE accounts SET balance = balance + :#amount WHERE account_number = :#accountNumber"/>-->
+
+<!--        &lt;!&ndash; Record transaction &ndash;&gt;-->
+<!--&lt;!&ndash;        <to uri="direct:recordTransferTransaction"/>&ndash;&gt;-->
+
+<!--        <setBody><constant>{"success": true, "message": "Transfer completed successfully"}</constant></setBody>-->
+<!--    </route>-->
+    <route id="transfer-route">
+        <from uri="direct:transfer"/>
+
+        <!-- Log incoming values -->
+        <log message="TRANSFER STARTED - From: ${body.fromAccount}, To: ${body.toAccount}, Amount: ${body.amount}"/>
+
+        <!-- Store values in headers -->
+        <setHeader name="fromAccount"><simple>${body.fromAccount}</simple></setHeader>
+        <setHeader name="toAccount"><simple>${body.toAccount}</simple></setHeader>
+        <setHeader name="amount"><simple>${body.amount}</simple></setHeader>
+        <setHeader name="description"><simple>${body.description}</simple></setHeader>
+
+        <!-- Validate transfer request -->
+        <to uri="direct:validateTransferRequest"/>
+        <log message="Transfer request validation passed"/>
+
+        <!-- Validate FROM account -->
+        <setHeader name="accountNumber"><simple>${header.fromAccount}</simple></setHeader>
+        <to uri="direct:validateAccountExists"/>
+        <to uri="direct:validateActiveAccount"/>
+        <log message="FROM account validation passed"/>
+
+        <!-- Validate TO account -->
+        <setHeader name="accountNumber"><simple>${header.toAccount}</simple></setHeader>
+        <to uri="direct:validateAccountExists"/>
+        <to uri="direct:validateActiveAccount"/>
+        <log message="TO account validation passed"/>
+
+        <!-- Validate sufficient funds -->
+        <setHeader name="accountNumber"><simple>${header.fromAccount}</simple></setHeader>
+        <to uri="direct:validateSufficientFunds"/>
+        <log message="Sufficient funds validation passed"/>
+
+        <!-- UPDATE FROM ACCOUNT -->
+        <setHeader name="accountNumber"><simple>${header.fromAccount}</simple></setHeader>
+        <setHeader name="amount"><simple>${header.amount}</simple></setHeader>
+        <log message="Executing FROM account update with: ${body}"/>
+        <to uri="sql:UPDATE accounts SET balance = balance - :#amount WHERE account_number = :#accountNumber"/>
+        <log message="FROM account update completed"/>
+
+        <!-- UPDATE TO ACCOUNT -->
+        <!-- UPDATE TO ACCOUNT -->
+        <setHeader name="accountNumber"><simple>${header.toAccount}</simple></setHeader>
+        <setHeader name="amount"><simple>${header.amount}</simple></setHeader>
+        <log message="Executing TO account update with: ${body}"/>
+        <to uri="sql:UPDATE accounts SET balance = balance + :#amount WHERE account_number = :#accountNumber"/>
+        <log message="TO account update completed"/>
+
+        <!-- Record transaction -->
+        <!-- <to uri="direct:recordTransferTransaction"/> -->
+
+        <setBody><constant>{"success": true, "message": "Transfer completed successfully"}</constant></setBody>
+        <log message="TRANSFER COMPLETED"/>
+    </route>
+<!--    get Balance-->
+    <route id="get-balance-route">
+        <from uri="direct:getBalance"/>
+        <to uri="direct:validateAccountExists"/>
+        <to uri="sql:SELECT balance FROM accounts WHERE account_number = :#${header.accountNumber}?outputType=SelectOne"/>
+        <setBody>
+            <simple>{"success": true, "balance": ${body}, "accountNumber": "${header.accountNumber}"}</simple>
+        </setBody>
+    </route>
+
+
+<!--    get transaction detials-->
+    <route id="get-transactions-route">
+        <from uri="direct:getTransactions"/>
+        <to uri="direct:validateAccountExists"/>
+
+        <!-- Start with base query -->
+        <setBody>
+            <constant>SELECT * FROM transactions WHERE (from_account = :#accountNumber OR to_account = :#accountNumber)</constant>
+        </setBody>
+
+        <!-- Add startDate filter if provided -->
+        <choice>
+            <when>
+                <simple>${header.startDate} != null</simple>
+                <setBody>
+                    <simple>${body} AND transaction_date >= :#startDate</simple>
+                </setBody>
+            </when>
+        </choice>
+
+        <!-- Add endDate filter if provided -->
+        <choice>
+            <when>
+                <simple>${header.endDate} != null</simple>
+                <setBody>
+                    <simple>${body} AND transaction_date &lt;= :#endDate</simple>
+                </setBody>
+            </when>
+        </choice>
+
+        <!-- Add transactionType filter if provided -->
+        <choice>
+            <when>
+                <simple>${header.transactionType} != null</simple>
+                <setBody>
+                    <simple>${body} AND transaction_type = :#transactionType</simple>
+                </setBody>
+            </when>
+        </choice>
+
+        <!-- Add ordering and pagination -->
+        <setBody>
+            <simple>${body} ORDER BY transaction_date DESC LIMIT :#size OFFSET :#offset</simple>
+        </setBody>
+
+        <!-- Calculate offset -->
+        <setHeader name="offset">
+            <simple>${header.page} * ${header.size}</simple>
+        </setHeader>
+
+        <!-- Log the generated SQL for debugging -->
+        <log message="Generated SQL: ${body}"/>
+
+        <!-- Execute the dynamic SQL -->
+        <to uri="sql:${body}?outputType=SelectList"/>
+
+        <setBody>
+            <simple>{"success": true, "transactions": ${body}, "totalCount": ${body.size()}}</simple>
+        </setBody>
+    </route>
+</camel>

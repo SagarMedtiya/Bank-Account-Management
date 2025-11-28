@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<camel xmlns="http://camel.apache.org/schema/spring"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+          http://camel.apache.org/schema/spring
+          https://raw.githubusercontent.com/apache/camel/main/core/camel-spring-xml/src/main/resources/org/apache/camel/schema/spring/camel-spring.xsd">
+
+    <!-- Record Transaction (Deposit/Withdrawal) -->
+    <route id="record-transaction">
+        <from uri="direct:recordTransaction"/>
+
+        <!-- Generate unique transaction ID -->
+        <setHeader name="transactionId">
+            <simple>TXN${date:now:yyyyMMddHHmmssSSS}</simple>
+        </setHeader>
+
+        <!-- Use accountNumber directly in the parameter map -->
+        <setBody>
+            <simple>{'transactionId': '${header.transactionId}', 'accountNumber': '${header.accountNumber}', 'transactionType': '${header.operationType}', 'amount': ${header.amount}, 'description': '${header.operationType}'}</simple>
+        </setBody>
+
+        <!-- Insert into transactions table using accountNumber -->
+        <to uri="sql:INSERT INTO transactions (transaction_id, from_account, transaction_type, amount, description) VALUES (:#transactionId, :#accountNumber, :#transactionType, :#amount, :#description)"/>
+    </route>
+
+    <!-- Record Transfer Transaction -->
+    <route id="record-transfer-transaction">
+        <from uri="direct:recordTransferTransaction"/>
+
+        <!-- Generate unique transaction ID -->
+        <setHeader name="transactionId">
+            <simple>TXN${date:now:yyyyMMddHHmmssSSS}</simple>
+        </setHeader>
+
+        <!-- Create parameter map for transfer transaction -->
+        <setBody>
+            <simple>{'transactionId': '${header.transactionId}', 'fromAccount': '${header.fromAccount}', 'toAccount': '${header.toAccount}', 'transactionType': 'TRANSFER', 'amount': ${header.amount}, 'description': '${header.description}'}</simple>
+        </setBody>
+
+        <!-- Log the parameters -->
+        <log message="Transfer Transaction Parameters: ${body}"/>
+
+        <!-- Insert into transactions table -->
+        <to uri="sql:INSERT INTO transactions (transaction_id, from_account, to_account, transaction_type, amount, description) VALUES (:#transactionId, :#fromAccount, :#toAccount, :#transactionType, :#amount, :#description)"/>
+    </route>
+
+</camel>

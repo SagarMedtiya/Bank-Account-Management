@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<camel xmlns="http://camel.apache.org/schema/spring"
+       xmlns:bean="http://camel.apache.org/schema/bean"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+         http://camel.apache.org/schema/spring
+         https://raw.githubusercontent.com/apache/camel/main/core/camel-spring-xml/src/main/resources/org/apache/camel/schema/spring/camel-spring.xsd">
+
+    <!-- Account Creation Validation -->
+    <route id="validate-account-creation">
+        <from uri="direct:validateAccountCreation"/>
+        <doTry>
+            <choice>
+                <when>
+                    <simple>${body.getAccountNumber()} == null || ${body.getAccountNumber().trim()} == ''</simple>
+                    <setBody>
+                        <constant>{"success": false, "message": "Account number is required"}</constant>
+                    </setBody>
+                    <setHeader name="CamelHttpResponseCode"><constant>400</constant></setHeader>
+                    <stop/>
+                </when>
+                <when>
+                    <simple>${body.getCustomerName()} == null || ${body.getCustomerName().trim()} == ''</simple>
+                    <setBody>
+                        <constant>{"success": false, "message": "Customer name is required"}</constant>
+                    </setBody>
+                    <setHeader name="CamelHttpResponseCode"><constant>400</constant></setHeader>
+                    <stop/>
+                </when>
+                <when>
+                    <simple>${body.getAccountType()} == null || ${body.getAccountType().trim()} == ''</simple>
+                    <setBody>
+                        <constant>{"success": false, "message": "Account type is required"}</constant>
+                    </setBody>
+                    <setHeader name="CamelHttpResponseCode"><constant>400</constant></setHeader>
+                    <stop/>
+                </when>
+            </choice>
+            <doCatch>
+                <exception>java.lang.Exception</exception>
+                <setBody>
+                    <constant>{"success": false, "message": "Validation error: ${exception.message}"}</constant>
+                </setBody>
+                <setHeader name="CamelHttpResponseCode"><constant>400</constant></setHeader>
+                <stop/>
+            </doCatch>
+        </doTry>
+    </route>
+
+    <!-- Account Existence Validation -->
+    <route id="validate-account-exists">
+        <from uri="direct:validateAccountExists"/>
+        <to uri="sql:SELECT COUNT(*) as count FROM accounts WHERE account_number = :#${header.accountNumber}?outputType=SelectOne"/>
+        <choice>
+            <when>
+                <simple>${body} == 0</simple>
+                <setBody><constant>{"success": false, "message": "Account not found"}</constant></setBody>
+                <setHeader name="CamelHttpResponseCode"><constant>404</constant></setHeader>
+                <stop/>
+            </when>
+            <otherwise>
+                <!-- Preserve the original body by setting it to a success indicator -->
+                <setBody><constant>VALID</constant></setBody>
+            </otherwise>
+        </choice>
+    </route>
+    <route id="get-account-route">
+        <from uri="direct:getAccount"/>
+        <to uri="direct:validateAccountExists"/>
+        <to uri="sql:SELECT * FROM accounts WHERE account_number = :#${header.accountNumber}?outputType=SelectOne"/>
+        <setBody>
+            <simple>{"success": true, "account": ${body}}</simple>
+        </setBody>
+    </route>
+    <!-- Transaction Amount Validation -->
+    <route id="validate-transaction-amount">
+        <from uri="direct:validateTransactionAmount"/>
+        <choice>
+            <when>
+                <simple>${header.transactionAmount} == null</simple>
+                <setBody><constant>{"success": false, "message": "Amount is required"}</constant></setBody>
+                <setHeader name="CamelHttpResponseCode"><constant>400</constant></setHeader>
+                <stop/>
+            </when>
+            <when>
+                <simple>${header.transactionAmount} &lt;= 0</simple>
+                <setBody><constant>{"success": false, "message": "Amount must be positive"}</constant></setBody>
+                <setHeader name="CamelHttpResponseCode"><constant>400</constant></setHeader>
+                <stop/>
+            </when>
+            <otherwise>
+                <!-- Preserve validation result -->
+                <setBody><constant>VALID</constant></setBody>
+            </otherwise>
+        </choice>
+    </route>
+
+    <!-- Active Account Validation -->
+    <route id="validate-active-account">
+        <from uri="direct:validateActiveAccount"/>
+        <to uri="sql:SELECT status FROM accounts WHERE account_number = :#${header.accountNumber}?outputType=SelectOne"/>
+        <choice>
+            <when>
+                <simple>${body} != 'ACTIVE'</simple>
+                <setBody><constant>{"success": false, "message": "Account is not active"}</constant></setBody>
+                <setHeader name="CamelHttpResponseCode"><constant>400</constant></setHeader>
+                <stop/>
+            </when>
+            <otherwise>
+                <!-- Preserve the original body -->
+                <setBody><constant>VALID</constant></setBody>
+            </otherwise>
+        </choice>
+    </route>
+
+    <!-- Sufficient Funds Validation -->
+    <route id="validate-sufficient-funds">
+        <from uri="direct:validateSufficientFunds"/>
+        <to uri="sql:SELECT balance FROM accounts WHERE account_number = :#${header.accountNumber}?outputType=SelectOne"/>
+        <choice>
+            <when>
+                <simple>${body} &lt; ${header.amount}</simple>
+                <setBody><constant>{"success": false, "message": "Insufficient funds"}</constant></setBody>
+                <setHeader name="CamelHttpResponseCode"><constant>400</constant></setHeader>
+                <stop/>
+            </when>
+        </choice>
+    </route>
+
+    <!-- Transfer Request Validation -->
+    <route id="validate-transfer-request">
+        <from uri="direct:validateTransferRequest"/>
+        <choice>
+            <when>
+                <simple>${header.fromAccount} == null</simple>
+                <setBody><constant>{"success": false, "message": "From account is required"}</constant></setBody>
+                <setHeader name="CamelHttpResponseCode"><constant>400</constant></setHeader>
+                <stop/>
+            </when>
+            <when>
+                <simple>${header.fromAccount} == ''</simple>
+                <setBody><constant>{"success": false, "message": "From account is required"}</constant></setBody>
+                <setHeader name="CamelHttpResponseCode"><constant>400</constant></setHeader>
+                <stop/>
+            </when>
+            <when>
+                <simple>${header.toAccount} == null</simple>
+                <setBody><constant>{"success": false, "message": "To account is required"}</constant></setBody>
+                <setHeader name="CamelHttpResponseCode"><constant>400</constant></setHeader>
+                <stop/>
+            </when>
+            <when>
+                <simple>${header.toAccount} == ''</simple>
+                <setBody><constant>{"success": false, "message": "To account is required"}</constant></setBody>
+                <setHeader name="CamelHttpResponseCode"><constant>400</constant></setHeader>
+                <stop/>
+            </when>
+            <when>
+                <simple>${header.amount} == null</simple>
+                <setBody><constant>{"success": false, "message": "Amount is required"}</constant></setBody>
+                <setHeader name="CamelHttpResponseCode"><constant>400</constant></setHeader>
+                <stop/>
+            </when>
+            <when>
+                <simple>${header.amount} &lt;= 0</simple>
+                <setBody><constant>{"success": false, "message": "Amount must be positive"}</constant></setBody>
+                <setHeader name="CamelHttpResponseCode"><constant>400</constant></setHeader>
+                <stop/>
+            </when>
+            <when>
+                <simple>${header.fromAccount} == ${header.toAccount}</simple>
+                <setBody><constant>{"success": false, "message": "Cannot transfer to the same account"}</constant></setBody>
+                <setHeader name="CamelHttpResponseCode"><constant>400</constant></setHeader>
+                <stop/>
+            </when>
+        </choice>
+
+        <!-- Validate both accounts are active -->
+        <setHeader name="accountNumber"><simple>${header.fromAccount}</simple></setHeader>
+        <to uri="direct:validateActiveAccount"/>
+        <setHeader name="accountNumber"><simple>${header.toAccount}</simple></setHeader>
+        <to uri="direct:validateActiveAccount"/>
+    </route>
+
+</camel>
