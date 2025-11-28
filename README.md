@@ -1,9 +1,6 @@
 # bank-account-management-microservice
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
-
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
-
+This document outlines the comprehensive testing strategy for the Banking Application built with Java, Quarkus, Apache Camel, and PostgreSQL. The application provides core banking functionalities including account management, transactions, and fund transfers.
 ## Running the application in dev mode
 
 You can run your application in dev mode that enables live coding using:
@@ -14,53 +11,58 @@ You can run your application in dev mode that enables live coding using:
 
 > **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
 
-## Packaging and running the application
+## Application Architecture
 
-The application can be packaged using:
+* Framework: Quarkus with Apache Camel integration
 
-```shell script
-./mvnw package
+* Database: PostgreSQL with JPA/Hibernate
+
+* API Style: RESTful endpoints
+
+* Key Features: Account management, deposits, withdrawals, transfers, transaction history
+
+## Test Environment Requirements
+
+### Software Requirements:
+
+* Java 17 or higher
+
+* PostgreSQL 13+
+
+* Apache Maven 3.8+
+
+* JMeter 5.5+
+
+* Docker (optional, for containerized testing)
+
+## Test Structure
 ```
+src/test/java/org/keen/bank/unit/
+├── service/
+│   ├── AccountServiceTest.java
+│   └── ValidationServiceTest.java
+├── dto/
+│   ├── AccountRequestTest.java
+│   └── TransferRequestTest.java
+└── processor/
+    └── ValidationProcessorTest.java
 
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
-
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
-
-If you want to build an _über-jar_, execute the following command:
-
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
 ```
+## Functional Testing
+###  API Endpoints Coverage
+| HTTP Method | Endpoint | Purpose | Test Priority |
+| --- | --- | --- | --- |
+| POST | `/api/accounts/create` | Create new account | High |
+| GET | `/api/accounts/{accountNumber}` | Get account details | High |
+| PUT | `/api/accounts/{accountNumber}` | Update account | Medium |
+| GET | `/api/accounts/{accountNumber}/balance` | Check balance | High |
+| POST | `/api/accounts/{accountNumber}/deposit` | Deposit funds | High |
+| POST | `/api/accounts/{accountNumber}/withdraw` | Withdraw funds | High |
+| POST | `/api/accounts/transfer` | Transfer between accounts | High |
 
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
-
-## Creating a native executable
-
-You can create a native executable using:
-
-```shell script
-./mvnw package -Dnative
+### Test Data Strategy
+``` -- Test accounts for functional testing
+INSERT INTO accounts (account_number, customer_name, account_type, balance) VALUES
+('FUNC001', 'Functional Test User 1', 'SAVINGS', 5000.0),
+('FUNC002', 'Functional Test User 2', 'CHECKING', 3000.0);
 ```
-
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
-
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
-```
-
-You can then execute your native executable with: `./target/bank-account-management-microservice-1.0.0-SNAPSHOT-runner`
-
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
-
-## Related Guides
-
-- RESTEasy Classic ([guide](https://quarkus.io/guides/resteasy)): REST endpoint framework implementing Jakarta REST and more
-
-## Provided Code
-
-### RESTEasy JAX-RS
-
-Easily start your RESTful Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started#the-jax-rs-resources)
