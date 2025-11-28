@@ -125,10 +125,32 @@ src/test/java/org/keen/bank/unit/
 | POST | `/api/accounts/{accountNumber}/withdraw` | Withdraw funds | High |
 | POST | `/api/accounts/transfer` | Transfer between accounts | High |
 
-### Test Data Strategy
- -- Test accounts for functional testing
+## Testint Strategy
+### Unit Tests
+* Route functionality testing
+* Service layer testing
+* Validation logic testing
+### Load Testing
+* Concurrent account operations
+* High-volume transaction processing
+* Database connection pooling
+ ### Test accounts for functional testing
  ```
 INSERT INTO accounts (account_number, customer_name, account_type, balance) VALUES
 ('FUNC001', 'Functional Test User 1', 'SAVINGS', 5000.0),
 ('FUNC002', 'Functional Test User 2', 'CHECKING', 3000.0);
 ```
+## Future Enhancements
+### Planned Features
+1.  Authentication & Authorization
+2.  Real-time notifications
+3.  Batch processing for bulk operations
+4.  Advanced reporting and analytics
+5.  Microservices decomposition
+
+### Scalability Improvements
+-   Horizontal scaling support
+-   Database sharding strategy
+-   Message queue integration
+-   Caching layer implementation
+
