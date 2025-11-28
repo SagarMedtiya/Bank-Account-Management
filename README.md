@@ -91,6 +91,15 @@ src/main/resources/
 * validation-routes.xml - Input validation logic
 * transaction-recording-routes.xml - Audit logging
 
+## Business Logic Services
+### AccountService
+* Dynamic SQL query building for updates
+* Account validation logic
+* Transaction ID generation
+### ValidationService
+* Input validation for all operations
+* Business rule enforcement
+* Error message formatting
 ## Test Structure
 ```
 src/test/java/org/keen/bank/unit/
