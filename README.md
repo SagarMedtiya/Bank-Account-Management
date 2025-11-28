@@ -21,7 +21,7 @@ You can run your application in dev mode that enables live coding using:
 
 * Key Features: Account management, deposits, withdrawals, transfers, transaction history
 
-## Test Environment Requirements
+## Environment Requirements
 
 ### Software Requirements:
 
