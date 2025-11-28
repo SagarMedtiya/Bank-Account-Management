@@ -1,4 +1,4 @@
-# bank-account-management-microservice
+# Bank Account Managemen Microservice
 
 This document outlines the comprehensive testing strategy for the Banking Application built with Java, Quarkus, Apache Camel, and PostgreSQL. The application provides core banking functionalities including account management, transactions, and fund transfers.
 ## Running the application in dev mode
@@ -61,7 +61,8 @@ src/test/java/org/keen/bank/unit/
 | POST | `/api/accounts/transfer` | Transfer between accounts | High |
 
 ### Test Data Strategy
-``` -- Test accounts for functional testing
+ -- Test accounts for functional testing
+ ```
 INSERT INTO accounts (account_number, customer_name, account_type, balance) VALUES
 ('FUNC001', 'Functional Test User 1', 'SAVINGS', 5000.0),
 ('FUNC002', 'Functional Test User 2', 'CHECKING', 3000.0);
