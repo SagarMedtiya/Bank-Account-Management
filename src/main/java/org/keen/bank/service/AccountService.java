@@ -16,7 +16,7 @@ public class AccountService {
         Map<String, Object> request = exchange.getIn().getBody(Map.class);
         String accountNumber = exchange.getIn().getHeader("accountNumber", String.class);
 
-        StringBuilder query = new StringBuilder("UPDATE accounts SET updated_at = CURRENT_TIMESTAMP");
+        StringBuilder query = new StringBuilder("UPDATE accounts SET ");
         Map<String, Object> params = new HashMap<>();
         boolean hasFields = false;
 
@@ -50,6 +50,7 @@ public class AccountService {
             throw new IllegalArgumentException("No valid fields provided for update");
         }
 
+        query.setLength((query.length()-2));
         query.append(" WHERE account_number = :#accountNumber");
         params.put("accountNumber", accountNumber);
 
@@ -59,18 +60,18 @@ public class AccountService {
     /*
     * Validate account creation request
 //    */
-//    public void validateAccountCreation(Exchange exchange){
-//        AccountRequest request = exchange.getIn().getBody(AccountRequest.class);
-//        if(request.getAccountNumber() == null || request.getAccountNumber().trim().isEmpty()){
-//            throw new IllegalArgumentException("Account number is required");
-//        }
-//        if(request.getCustomerName() == null || request.getCustomerName().trim().isEmpty()){
-//            throw new IllegalArgumentException("Customer name is required");
-//        }
-//        if(request.getAccountType() == null || request.getAccountType().trim().isEmpty()){
-//            throw new IllegalArgumentException("Account type is required");
-//        }
-//    }
+    public void validateAccountCreation(Exchange exchange){
+        AccountRequest request = exchange.getIn().getBody(AccountRequest.class);
+        if(request.getAccountNumber() == null || request.getAccountNumber().trim().isEmpty()){
+            throw new IllegalArgumentException("Account number is required");
+        }
+        if(request.getCustomerName() == null || request.getCustomerName().trim().isEmpty()){
+            throw new IllegalArgumentException("Customer name is required");
+        }
+        if(request.getAccountType() == null || request.getAccountType().trim().isEmpty()){
+            throw new IllegalArgumentException("Account type is required");
+        }
+    }
     /*
     * Generate unique transaction id
      */
@@ -79,6 +80,9 @@ public class AccountService {
     }
 
     public String escapeSql(String input) {
+        if(input == null){
+            return null;
+        }
         return input.replace("'","''");
     }
 }

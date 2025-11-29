@@ -17,7 +17,7 @@ import java.util.Map;
 @Consumes(MediaType.APPLICATION_JSON)
 public class AccountResource {
     @Inject
-    ProducerTemplate producerTemplate;
+    public ProducerTemplate producerTemplate;
 
     @POST
     @Path("/create")
