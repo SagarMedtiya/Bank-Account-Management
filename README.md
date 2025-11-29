@@ -2,16 +2,6 @@
 # Bank Account Managemen Microservice
 
 A comprehensive banking microservice built with Quarkus Camel (XML-DSL) that provides core banking operations including account management, transactions, and fund transfers using PostgreSQL as the database.
-=======
-
-# Bank-Account-Management
-=======
-# bank-account-management-microservice
-
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
-
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
-
 
 ## Running the application in dev mode
 
