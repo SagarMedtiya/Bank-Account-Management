@@ -6,7 +6,7 @@ import org.keen.bank.dto.AccountRequest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class AccountRequestTest {
+public class  AccountRequestTest {
     @Test
     @DisplayName("Should build AccountRequest using builder pattern")
     void testAccountRequestBuilder() {

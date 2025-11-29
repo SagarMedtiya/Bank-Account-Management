@@ -14,6 +14,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class AccountServiceTest {
+
     private AccountService accountService;
     private DefaultCamelContext context;
 
@@ -49,11 +50,19 @@ public class AccountServiceTest {
         assertDoesNotThrow(() -> accountService.buildUpdateQuery(exchange));
 
         String updateQuery = exchange.getIn().getHeader("updateQuery", String.class);
+        Map<String, Object> params= exchange.getIn().getBody(Map.class);
         assertNotNull(updateQuery);
         assertTrue(updateQuery.contains("customer_name"));
         assertTrue(updateQuery.contains("email"));
         assertTrue(updateQuery.contains("phone"));
         assertTrue(updateQuery.contains("ACC123"));
+        //verify parameters are set correctly
+
+        assertNotNull(params);
+        assertEquals("Updated Name", params.get("customerName"));
+        assertEquals("updated@email.com", params.get("email"));
+        assertEquals("9876543210", params.get("phone"));
+        assertEquals("ACC123", params.get("accountNumber"));
     }
     @Test
     @DisplayName("Should escape SQL injection characters")
@@ -62,6 +71,7 @@ public class AccountServiceTest {
         String result = accountService.escapeSql(input);
 
         assertEquals("test''; DROP TABLE accounts; --", result);
+        assertTrue(result.contains("''")); // This should be true - single quotes are escaped
         assertFalse(result.contains("';"));
     }
     @Test
