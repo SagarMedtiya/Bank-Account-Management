@@ -156,8 +156,3 @@ INSERT INTO accounts (account_number, customer_name, account_type, balance) VALU
 -   Database sharding strategy
 -   Message queue integration
 -   Caching layer implementation
-
-
-[Related guide section...](https://quarkus.io/guides/getting-started#the-jax-rs-resources)
->>>>>>> 6db71d1 (init)
->>>>>>> 87795fa (Merge remote main into local main)
